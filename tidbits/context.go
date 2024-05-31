@@ -18,6 +18,10 @@ func IsGlobalLoggerFallbackEnabled() bool {
 	return allowDefaultLoggerFallback.Load()
 }
 
+func WithLogger(ctx context.Context, logger *slog.Logger) context.Context {
+	return context.WithValue(ctx, loggerKey, logger)
+}
+
 func L(ctx context.Context) *slog.Logger {
 	logger, ok := ctx.Value(loggerKey).(*slog.Logger)
 	if ok {

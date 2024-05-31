@@ -27,4 +27,8 @@ func TestContextLogger(t *testing.T) {
 	assert.Panics(t, func() {
 		L(context.Background()).Info("hello, world")
 	}, "no context logger and the global fallback is disabled")
+
+	ctx := WithLogger(context.Background(), slog.New(sink.Handler()))
+	L(ctx).Info("hello, world")
+	assert.Equal(t, `{"time":"","level":"INFO","msg":"hello, world"}`, sink.Get())
 }
