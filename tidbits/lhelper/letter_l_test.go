@@ -1,7 +1,8 @@
-package tidbits
+package lhelper
 
 import (
 	"context"
+	"github.com/Cyberax/slog-tidbits/tidbits"
 	"github.com/stretchr/testify/assert"
 	"log/slog"
 	"testing"
@@ -13,10 +14,12 @@ func TestContextLogger(t *testing.T) {
 		slog.SetDefault(slog.Default())
 	}()
 
+	assert.Nil(t, TryGetLoggerFromContext(context.Background()))
+
 	EnableGlobalLoggerFallback(true)
 	assert.True(t, IsGlobalLoggerFallbackEnabled())
 
-	sink := NewSinkingLogger(slog.LevelInfo)
+	sink := tidbits.NewSinkingLogger(slog.LevelInfo)
 	slog.SetDefault(slog.New(sink.Handler()))
 	L(context.Background()).Info("hello, world")
 	assert.Equal(t, `{"time":"","level":"INFO","msg":"hello, world"}`, sink.Get())
@@ -31,4 +34,5 @@ func TestContextLogger(t *testing.T) {
 	ctx := WithLogger(context.Background(), slog.New(sink.Handler()))
 	L(ctx).Info("hello, world")
 	assert.Equal(t, `{"time":"","level":"INFO","msg":"hello, world"}`, sink.Get())
+	assert.NotNil(t, TryGetLoggerFromContext(ctx))
 }
