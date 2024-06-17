@@ -8,12 +8,17 @@ import (
 	"strings"
 )
 
+type ContextExtractor interface {
+	MergeContextAttrs(ctx context.Context, curAttrs []slog.Attr) []slog.Attr
+}
+
 type SlogOptions struct {
 	AppendNewAttrsRight  bool
 	MultilineStackTraces bool
 
 	Pinpointer *PinpointLogLevels
 	LogLevel   slog.Level
+	Extractors []ContextExtractor
 }
 
 type SlogConvenience struct {
@@ -66,6 +71,12 @@ func (s *SlogConvenience) Handle(ctx context.Context, record slog.Record) error 
 	})
 
 	merged := s.mergeAttrs(newAttrs, s.attrs, s.options.AppendNewAttrsRight)
+
+	// Extract context attributes
+	for _, extractor := range s.options.Extractors {
+		merged = extractor.MergeContextAttrs(ctx, merged)
+	}
+
 	mergedRecord := slog.NewRecord(record.Time, record.Level, record.Message, record.PC)
 	mergedRecord.AddAttrs(merged...)
 
@@ -109,42 +120,13 @@ func (s *SlogConvenience) mergeAttrs(newAttrs, curAttrs []slog.Attr, appendNewAt
 		return slices.Clone(newAttrs)
 	}
 
-	isDuplicate := func(curAttr slog.Attr, attrsToCheck []slog.Attr) bool {
-		// Detect duplicate field names. This is quadratic, but in practice
-		// we never have more than a handful of attributes, so this works fast
-		// enough.
-		// TODO: switch to sets after a certain threshold
-		for _, oldAttr := range attrsToCheck {
-			if oldAttr.Key == curAttr.Key {
-				return true
-			}
-		}
-		return false
-	}
-
 	resAttrs := make([]slog.Attr, 0, len(newAttrs)+len(curAttrs))
 	if appendNewAttrsRight {
-		for _, o := range curAttrs {
-			if !isDuplicate(o, resAttrs) {
-				resAttrs = append(resAttrs, o)
-			}
-		}
-		for _, o := range newAttrs {
-			if !isDuplicate(o, resAttrs) {
-				resAttrs = append(resAttrs, o)
-			}
-		}
+		resAttrs = append(resAttrs, curAttrs...)
+		resAttrs = append(resAttrs, newAttrs...)
 	} else {
-		for _, o := range newAttrs {
-			if !isDuplicate(o, resAttrs) {
-				resAttrs = append(resAttrs, o)
-			}
-		}
-		for _, o := range curAttrs {
-			if !isDuplicate(o, resAttrs) {
-				resAttrs = append(resAttrs, o)
-			}
-		}
+		resAttrs = append(resAttrs, newAttrs...)
+		resAttrs = append(resAttrs, curAttrs...)
 	}
 
 	return resAttrs

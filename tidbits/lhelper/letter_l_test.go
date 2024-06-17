@@ -36,3 +36,25 @@ func TestContextLogger(t *testing.T) {
 	assert.Equal(t, `{"time":"","level":"INFO","msg":"hello, world"}`, sink.Get())
 	assert.NotNil(t, TryGetLoggerFromContext(ctx))
 }
+
+type TestExtractor struct {
+}
+
+var _ tidbits.ContextExtractor = &TestExtractor{}
+
+func (t *TestExtractor) MergeContextAttrs(ctx context.Context, curAttrs []slog.Attr) []slog.Attr {
+	val := ctx.Value("TestValue").(string)
+	return append(curAttrs, slog.String("TestValue", val))
+}
+
+func TestExtractors(t *testing.T) {
+	sink := tidbits.NewSinkingLogger(slog.LevelInfo)
+	conv := tidbits.NewSlogConvenience(tidbits.SlogOptions{
+		Extractors: []tidbits.ContextExtractor{&TestExtractor{}},
+	}, sink.Handler())
+
+	ctx := WithLogger(context.Background(), slog.New(conv))
+	ctx = context.WithValue(ctx, "TestValue", "through_context")
+	L(ctx).Info("hello, world")
+	assert.Equal(t, `{"time":"","level":"INFO","msg":"hello, world","TestValue":"through_context"}`, sink.Get())
+}
