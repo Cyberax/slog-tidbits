@@ -37,6 +37,14 @@ func TestContextLogger(t *testing.T) {
 	assert.NotNil(t, TryGetLoggerFromContext(ctx))
 }
 
+func TestLTRACE(t *testing.T) {
+	sink := tidbits.NewSinkingLogger(LevelTrace)
+	slog.SetDefault(slog.New(sink.Handler()))
+	ctx := WithLogger(context.Background(), slog.New(sink.Handler()))
+	LTRACE(ctx, "hello, world", "this", "is a test")
+	assert.Equal(t, `{"time":"","level":"DEBUG-6","msg":"hello, world","this":"is a test"}`, sink.Get())
+}
+
 type TestExtractor struct {
 }
 

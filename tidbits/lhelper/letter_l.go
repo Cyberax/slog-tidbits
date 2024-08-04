@@ -4,8 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"runtime"
 	"sync/atomic"
+	"time"
 )
+
+const LevelTrace = slog.Level(-10)
 
 const loggerKey = "tidbitLogger"
 
@@ -46,6 +50,25 @@ func TryGetLoggerFromContext(ctx context.Context) *slog.Logger {
 		return logger
 	}
 	return nil
+}
+
+// LTRACE helper logs a trace message. It's a shorthand for L(ctx).Log(LevelTrace, msg, args...).
+// It's not a wrapper function, but a reimplementation of slog.Logger.log to make sure it gets the
+// correct PC location for the caller.
+func LTRACE(ctx context.Context, msg string, args ...any) {
+	logger := L(ctx)
+	if !logger.Enabled(ctx, LevelTrace) {
+		return
+	}
+	var pc uintptr
+	var pcs [1]uintptr
+	// skip [runtime.Callers, this function]
+	runtime.Callers(2, pcs[:])
+	pc = pcs[0]
+
+	r := slog.NewRecord(time.Now(), LevelTrace, msg, pc)
+	r.Add(args...)
+	_ = logger.Handler().Handle(ctx, r)
 }
 
 type contextualizedLog struct {
