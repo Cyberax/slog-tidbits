@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"runtime"
 	"slices"
-	"strings"
 )
 
 type ContextExtractor interface {
@@ -13,8 +12,7 @@ type ContextExtractor interface {
 }
 
 type SlogOptions struct {
-	AppendNewAttrsRight  bool
-	MultilineStackTraces bool
+	AppendNewAttrsRight bool
 
 	Pinpointer *PinpointLogLevels
 	LogLevel   slog.Level
@@ -81,32 +79,13 @@ func (s *SlogConvenience) Handle(ctx context.Context, record slog.Record) error 
 	mergedRecord.AddAttrs(merged...)
 
 	// We don't want a multiline stack trace, but we still want to move it to the end of the message
-	if stackTrace != nil && !s.options.MultilineStackTraces {
+	if stackTrace != nil {
 		mergedRecord.AddAttrs(*stackTrace)
 	}
 
 	err := s.delegate.Handle(ctx, mergedRecord)
 	if err != nil {
 		return err
-	}
-
-	if stackTrace != nil && s.options.MultilineStackTraces {
-		// Print stack trace in a more readable format
-		text, err := stackTrace.Value.Any().(*StackValue).MarshalText()
-		if err != nil {
-			return err
-		}
-		for _, line := range strings.Split(string(text), "\n") {
-			if line == "" {
-				continue
-			}
-			lineRec := slog.NewRecord(record.Time, record.Level, line, record.PC)
-			lineRec.Message = line
-			err = s.delegate.Handle(ctx, lineRec)
-			if err != nil {
-				return err
-			}
-		}
 	}
 
 	return err

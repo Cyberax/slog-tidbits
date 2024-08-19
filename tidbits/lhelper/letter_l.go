@@ -27,6 +27,17 @@ func WithLogger(ctx context.Context, logger *slog.Logger) context.Context {
 	return context.WithValue(ctx, loggerKey, logger)
 }
 
+func DeriveLogger(ctx context.Context, attrs ...any) *slog.Logger {
+	logger, ok := ctx.Value(loggerKey).(*slog.Logger)
+	if ok {
+		return logger.With(attrs...)
+	}
+	if !allowDefaultLoggerFallback.Load() {
+		panic("no context logger and the global fallback is disabled")
+	}
+	return slog.Default().With(attrs...)
+}
+
 func L(ctx context.Context) *slog.Logger {
 	logger, ok := ctx.Value(loggerKey).(*slog.Logger)
 	if ok {
