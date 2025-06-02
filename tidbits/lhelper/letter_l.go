@@ -27,6 +27,11 @@ func WithLogger(ctx context.Context, logger *slog.Logger) context.Context {
 	return context.WithValue(ctx, loggerKey, logger)
 }
 
+func WithDerivedLogger(ctx context.Context, attrs ...any) context.Context {
+	logger := DeriveLogger(ctx, attrs...)
+	return WithLogger(ctx, logger)
+}
+
 func DeriveLogger(ctx context.Context, attrs ...any) *slog.Logger {
 	logger, ok := ctx.Value(loggerKey).(*slog.Logger)
 	if ok {
