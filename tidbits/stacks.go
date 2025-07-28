@@ -22,6 +22,7 @@ type StackValue struct {
 
 var _ json.Marshaler = &StackValue{}
 var _ encoding.TextMarshaler = &StackValue{}
+var _ slog.LogValuer = &StackValue{}
 
 func StackTraceAttr(skipToFirstPanic bool, msg string) slog.Attr {
 	return slog.Any(StackAttrName, NewStackValue(2, skipToFirstPanic, msg))
@@ -47,6 +48,14 @@ func PanicMsgToString(msg interface{}) string {
 		return err.Error()
 	}
 	return reflect.ValueOf(msg).String()
+}
+
+func (s *StackValue) LogValue() slog.Value {
+	text, err := s.MarshalText()
+	if err != nil {
+		return slog.StringValue("Failed to marshal the stack: " + string(text))
+	}
+	return slog.StringValue(string(text))
 }
 
 type StackElement struct {
